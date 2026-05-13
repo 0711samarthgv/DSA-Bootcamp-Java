@@ -1,0 +1,146 @@
+//corpus
+
+import nltk
+from nltk.tokenize import word_tokenize
+from gensim.models import Word2Vec
+
+nltk.download('punkt_tab')
+nltk.download('punkt')
+
+corpus=[
+    "vvce is worst college in mysore",
+    "ranjith is big chuthyaa in mysore",
+    "playboy is definesd by nischal",
+
+]
+
+data = [word_tokenize(sent.lower())for sent in corpus]
+model=Word2Vec(data,vector_size=50,window =3 , min_count =1)
+print(model.wv['ranjith'])
+print(model.wv.most_similar('playboy'))
+
+
+------------------------
+
+
+#LSTM
+import pandas as pd
+import numpy as np
+from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.models import Sequential
+from sklearn.preprocessing import MinMaxScaler
+
+# Load data
+data = pd.read_csv('VegetablePrice.csv')
+
+# Filter
+data = data[data['Commodity'] == "Tomato Big(Nepali)"].sort_values('Date')
+
+# Scale
+scaler = MinMaxScaler()
+p = scaler.fit_transform(data[['Average']].values)
+
+# Create sequences
+t = 10
+x = np.array([p[i:i+t] for i in range(len(p)-t)])
+y = np.array([p[i+t] for i in range(len(p)-t)])
+
+# Model
+model = Sequential([
+    LSTM(50, return_sequences=True, input_shape=(t,1)),
+    LSTM(50),
+    Dense(1)
+])
+
+# Train
+model.compile('adam', 'mse')
+model.fit(x, y, epochs=10, batch_size=32)
+
+# Predict
+pred = scaler.inverse_transform(model.predict(x))
+print(pred[:5])
+
+
+
+
+-----------------------------
+
+
+
+#auto encoding and decoding
+import matplotlib.pyplot as plt
+from tensorflow.keras import Model
+from tensorflow.keras.layers import Input, Dense
+from tensorflow.keras.datasets import mnist
+
+# Load data
+(x, _), (xt, _) = mnist.load_data()
+
+# Normalize and reshape
+x = x.reshape(-1, 784) / 255.0
+xt = xt.reshape(-1, 784) / 255.0
+
+# Autoencoder
+inp = Input((784,))
+encoded = Dense(32, activation='relu')(inp)
+decoded = Dense(784, activation='sigmoid')(encoded)
+
+model = Model(inp, decoded)
+
+# Train
+model.compile('adam', 'binary_crossentropy')
+model.fit(x, x, epochs=5, batch_size=256)
+
+# Predict
+out = model.predict(xt)
+
+# Show images
+for i in range(5):
+    plt.subplot(2, 5, i+1)
+    plt.imshow(xt[i].reshape(28,28), cmap='gray')
+
+    plt.subplot(2, 5, i+6)
+    plt.imshow(out[i].reshape(28,28), cmap='gray')
+
+plt.show()
+
+
+------------------
+
+
+
+#movie review
+from tensorflow.keras.datasets import imdb
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Embedding, LSTM, Dense
+
+# Load dataset
+(x_train, y_train), (x_test, y_test) = imdb.load_data(num_words=5000)
+
+# Pad sequences
+x_train = pad_sequences(x_train, maxlen=200)
+x_test = pad_sequences(x_test, maxlen=200)
+
+# Build model
+model = Sequential([
+    Embedding(5000, 32),
+    LSTM(32),
+    Dense(1, activation='sigmoid')
+])
+
+# Train
+model.compile('adam', 'binary_crossentropy', metrics=['accuracy'])
+model.fit(x_train, y_train, epochs=3, batch_size=64)
+
+# Test
+loss, acc = model.evaluate(x_test, y_test)
+print("Accuracy:", acc)
+
+# Predict
+pred = model.predict(x_test[:1])
+
+if pred[0][0] > 0.5:
+    print("Positive Review")
+else:
+    print("Negative Review")
